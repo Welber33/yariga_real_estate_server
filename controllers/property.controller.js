@@ -13,7 +13,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
-async function getAllProperties(request, response) { }
+async function getAllProperties(request, response) {
+  try {
+    const properties = await Property.find({}).limit(request.query._end)
+
+    response.status(200).json(properties)
+  } catch (error) {
+    response.status(500).json({ message: error.message })
+  }
+}
 
 async function getPropertyDetail(request, response) { }
 
