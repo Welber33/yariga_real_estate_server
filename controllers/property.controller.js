@@ -14,12 +14,39 @@ cloudinary.config({
 })
 
 async function getAllProperties(request, response) {
-  try {
-    const properties = await Property.find({}).limit(request.query._end)
+  const {
+    _end,
+    _order,
+    _start,
+    _sort,
+    title_like = "",
+    propertyType = "",
+  } = request.query;
 
-    response.status(200).json(properties)
+  const query = {};
+
+  if (propertyType !== "") {
+    query.propertyType = propertyType;
+  }
+
+  if (title_like) {
+    query.title = { $regex: title_like, $options: "i" };
+  }
+
+  try {
+    const count = await Property.countDocuments({ query });
+
+    const properties = await Property.find(query)
+      .limit(_end)
+      .skip(_start)
+      .sort({ [_sort]: _order });
+
+    response.header("x-total-count", count);
+    response.header("Access-Control-Expose-Headers", "x-total-count");
+
+    response.status(200).json(properties);
   } catch (error) {
-    response.status(500).json({ message: error.message })
+    response.status(500).json({ message: error.message });
   }
 }
 
