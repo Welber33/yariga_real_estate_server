@@ -50,7 +50,17 @@ async function getAllProperties(request, response) {
   }
 }
 
-async function getPropertyDetail(request, response) { }
+async function getPropertyDetail(request, response) {
+  const { id } = request.params
+
+  const propertyExists = await Property.findOne({ _id: id }).populate("creator")
+
+  if(propertyExists) {
+    response.status(200).json(propertyExists)
+  } else {
+    response.status(404).json({ message: "Property not found" })
+  }
+ }
 
 async function createProperty(request, response) {
   try {
@@ -94,9 +104,50 @@ async function createProperty(request, response) {
   }
 }
 
-async function updateProperty(request, response) { }
+async function updateProperty(request, response) { 
+  try {
+    const { id } = request.params
+    const { title, description, propertyType, location, price, photo } = request.body
 
-async function deleteProperty(request, response) { }
+    const photoUrl = await cloudinary.uploader.upload(photo)
+
+    await Property.findByIdAndUpdate({ _id: id }, {
+      title,
+      description,
+      propertyType,
+      location,
+      price,
+      photo: photoUrl.url || photo
+    })
+
+    response.status(200).json({ message: "Property updated successfully! "})
+  } catch (error) {
+    response.status(500).json({ message: error.message });
+  }
+}
+
+async function deleteProperty(request, response) { 
+  try {
+    const { id } = request.params
+
+    const propertyToDelete = await Property.findById({ _id: id }).populate("creator")
+
+    if(!propertyToDelete) throw new Error("Property  not found!")
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    propertyToDelete.remove({ session })
+    propertyToDelete.creator.allProperties.pull(propertyToDelete)
+    
+    await propertyToDelete.creator.save({ session })
+    await session.commitTransaction()
+
+    response.status(200).json({ message: "Property deleted successfully" })
+  } catch (error) {
+    
+  }
+}
 
 
 export {
